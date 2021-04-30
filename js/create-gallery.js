@@ -1,5 +1,13 @@
 import gallery from './gallery-items.js';
 
+const counter = (startIndex = 0) => {
+  let index = startIndex - 1;
+
+  return (incr = 1) => (index += incr);
+};
+
+const imageCounter = counter(0);
+
 const makeGalleryItemMarkup = ({ preview, original, description }) => {
   return `<li class="gallery__item">
             <a class="gallery__link" href="${original}">
@@ -7,45 +15,55 @@ const makeGalleryItemMarkup = ({ preview, original, description }) => {
                 class="gallery__image"
                 src="${preview}"
                 data-source="${original}"
+                data-index="${imageCounter(1)}"
                 alt="${description}"
               />
             </a>
           </li>`;
 };
 
-const LightBoxOpen = photo => {
-  lightBoxImgRef.src = photo.dataset.source;
-  lightBoxImgRef.alt = photo.alt;
+const LightBoxOpen = photoIndex => {
+  const currentPhoto = refs.gallery.querySelector(
+    `[data-index="${photoIndex}"]`,
+  );
 
-  lightBoxRef.classList.add('is-open');
-  lightBoxRef.dataset.index = galleryImagesList.indexOf(photo);
+  refs.lightBox.classList.add('is-open');
+  refs.lightBox.dataset.index = photoIndex;
+
+  refs.lightBoxImg.src = currentPhoto.dataset.source;
+  refs.lightBoxImg.alt = currentPhoto.alt;
 
   window.addEventListener('keydown', onKeyPressed);
+  refs.lightBoxCloseBtn.addEventListener('click', LightBoxClose);
+  refs.lightBoxOverlay.addEventListener('click', LightBoxClose);
 };
 
 const LightBoxClose = () => {
-  lightBoxRef.classList.remove('is-open');
-  lightBoxRef.removeAttribute('data-index');
+  refs.lightBox.classList.remove('is-open');
+  refs.lightBox.removeAttribute('data-index');
 
-  lightBoxImgRef.src = '';
-  lightBoxImgRef.alt = '';
+  refs.lightBoxImg.src = '';
+  refs.lightBoxImg.alt = '';
 
   window.removeEventListener('keydown', onKeyPressed);
+  refs.lightBoxCloseBtn.removeEventListener('click', LightBoxClose);
+  refs.lightBoxOverlay.removeEventListener('click', LightBoxClose);
 };
 
 const LightBoxImageSwipe = offset => {
-  let nextIndex = Number(lightBoxRef.dataset.index) + offset;
+  let nextIndex = Number(refs.lightBox.dataset.index) + offset;
 
   if (nextIndex < 0) {
-    nextIndex = galleryImagesList.length - 1;
+    nextIndex = imageCounter(0);
   }
-  if (nextIndex > galleryImagesList.length - 1) {
+  if (nextIndex > imageCounter(0)) {
     nextIndex = 0;
   }
 
-  lightBoxRef.dataset.index = nextIndex;
-  lightBoxImgRef.src = galleryImagesList[nextIndex].dataset.source;
-  lightBoxImgRef.alt = galleryImagesList[nextIndex].alt;
+  refs.lightBox.dataset.index = nextIndex;
+  const nextPhoto = refs.gallery.querySelector(`[data-index="${nextIndex}"]`);
+  refs.lightBoxImg.src = nextPhoto.dataset.source;
+  refs.lightBoxImg.alt = nextPhoto.alt;
 };
 
 const onPhotoClick = event => {
@@ -56,7 +74,7 @@ const onPhotoClick = event => {
     return;
   }
 
-  LightBoxOpen(targetPhoto);
+  LightBoxOpen(targetPhoto.dataset.index);
 };
 
 const onKeyPressed = event => {
@@ -87,20 +105,18 @@ const onKeyPressed = event => {
   }
 };
 
+const refs = {
+  gallery: document.querySelector('.js-gallery'),
+  lightBox: document.querySelector('.js-lightbox'),
+  lightBoxOverlay: document.querySelector('.js-lightbox .lightbox__overlay'),
+  lightBoxImg: document.querySelector('.js-lightbox .lightbox__image'),
+  lightBoxCloseBtn: document.querySelector(
+    '.js-lightbox button[data-action="close-lightbox"]',
+  ),
+};
+
 const galleryMarkup = gallery.map(item => makeGalleryItemMarkup(item)).join('');
 
-const galleryRef = document.querySelector('.js-gallery');
-const lightBoxRef = document.querySelector('.js-lightbox');
-const lightBoxOverlayRef = lightBoxRef.querySelector('.lightbox__overlay');
-const lightBoxImgRef = lightBoxRef.querySelector('.lightbox__image');
-const lightBoxCloseBtn = lightBoxRef.querySelector(
-  'button[data-action="close-lightbox"]',
-);
+refs.gallery.insertAdjacentHTML('afterbegin', galleryMarkup);
 
-galleryRef.insertAdjacentHTML('afterbegin', galleryMarkup);
-
-const galleryImagesList = [...galleryRef.querySelectorAll('.gallery__image')];
-
-galleryRef.addEventListener('click', onPhotoClick);
-lightBoxCloseBtn.addEventListener('click', LightBoxClose);
-lightBoxOverlayRef.addEventListener('click', LightBoxClose);
+refs.gallery.addEventListener('click', onPhotoClick);
